@@ -13,7 +13,7 @@ Serviço responsável por gerenciar as categorias do SOAT. Principais caracterí
 - ✅ **Testes unitários e E2E** (Jest)
 - ✅ **Pronto para deploy cloud-native** (EKS + RDS)
 
-> **Nota**: Este repositório implementa apenas o serviço de categorias — outras responsabilidades do sistema (pagamentos, autenticação, orquestração de pedidos) estão em repositórios separados listados em "Links Úteis".
+> **Nota**: Este repositório implementa apenas o serviço de categorias — outras responsabilidades do sistema (pagamentos, autenticação) estão em repositórios separados listados em "Links Úteis".
 
 ---
 
@@ -185,7 +185,6 @@ kubectl get svc fiap-soat-application-service -n fiap-soat-app
 # Testar endpoints
 curl http://<LOAD_BALANCER_URL>/health
 curl http://<LOAD_BALANCER_URL>/docs  # Swagger
-curl http://<LOAD_BALANCER_URL>/products
 ```
 
 ---
@@ -206,9 +205,6 @@ src/
 │   │   └── usecases/        # Casos de uso (CQRS)
 │   │       ├── commands/    # Operações de escrita
 │   │       └── queries/     # Operações de leitura
-│   ├── customers/           # Domínio: Clientes
-│   ├── orders/              # Domínio: Pedidos
-│   ├── products/            # Domínio: Produtos
 │   └── common/              # Compartilhado
 │       ├── dtos/
 │       └── exceptions/
@@ -305,7 +301,7 @@ npm run migration:down
 - `GET /categories` - Listar categorias
 - `GET /categories/:id` - Buscar categoria por ID
 
-> **Nota**: Outros endpoints mencionados anteriormente (produtos, pedidos, clientes, pagamentos) pertencem a outros serviços do ecossistema SOAT e não estão implementados neste repositório.
+> **Nota**: Alguns endpoints pertencem a outros serviços do ecossistema SOAT e não estão implementados neste repositório.
 
 ---
 
@@ -508,53 +504,25 @@ Este projeto demonstra:
 
 ### Objetivos
 
-O sistema tem como principais objetivos:
+O serviço de categorias tem como principais objetivos:
 
-1. **Autoatendimento Eficiente**
-   - Permitir que clientes realizem pedidos de forma autônoma
-   - Oferecer interface intuitiva para seleção de produtos
-   - Facilitar a personalização de pedidos
-   - Integrar sistema de pagamento via QR Code (Mercado Pago)
+1. **Gerenciar categorias**
+   - Fornecer API para listagem e consulta de categorias
+   - Manter catálogo de categorias versionado via migrations
 
-2. **Gestão de Pedidos**
-   - Controlar o fluxo de pedidos desde a recepção até a entrega
-   - Monitorar o status dos pedidos em tempo real
-   - Gerenciar filas de preparação
-   - Notificar clientes sobre o status de seus pedidos
-
-3. **Administração do Estabelecimento**
-   - Gerenciar cadastro de clientes
-   - Controlar produtos e categorias
-   - Monitorar pedidos em andamento
-   - Acompanhar tempo de espera
-
-4. **Experiência do Cliente**
-   - Permitir identificação via CPF
-   - Oferecer cadastro simplificado
-   - Facilitar o acompanhamento do pedido
-   - Garantir transparência no processo
+2. **Suportar integração**
+   - Ser consumível por outros serviços do ecossistema
 
 ### Funcionalidades Principais
 
-- **Pedidos**
-  - Seleção de produtos por categoria (Lanche, Acompanhamento, Bebida, Sobremesa)
-  - Personalização de pedidos
-  - Identificação do cliente (CPF, cadastro ou anônimo)
+- **Categorias**
+  - `GET /categories` — listar categorias
+  - `GET /categories/:id` — obter categoria por ID
 
-- **Pagamento**
-  - Integração com Mercado Pago
-  - Pagamento via QR Code
-
-- **Acompanhamento**
-  - Monitoramento em tempo real do status do pedido
-  - Status: Recebido, Em preparação, Pronto, Finalizado
-  - Notificações de conclusão
 
 - **Administração**
-  - Gestão de clientes
-  - Controle de produtos e categorias
-  - Monitoramento de pedidos
-  - Análise de tempo de espera
+  - Manutenção do catálogo de categorias
+  - Ferramentas e scripts para gerência de categorias
 
 ## Integrantes
 - Juan Pablo Neres de Lima (RM361411) - Discord: juanjohnny
@@ -663,7 +631,7 @@ docker compose logs -f api-dev
 
 ## Arquitetura Limpa (Clean Architecture)
 
-> **⚠️ Importante**: A implementação da Clean Architecture está disponível na branch `refactor/orders-in-clean-arch`. Para acessar o código com a arquitetura limpa, faça checkout nesta branch.
+> **⚠️ Importante**: O projeto segue os princípios da Clean Architecture; o código atual já reflete essa organização.
 
 Este projeto implementa a Arquitetura Limpa, também conhecida como Clean Architecture, é uma forma de organizar o código de um sistema de maneira que ele fique mais desacoplado, testável, sustentável e independente de frameworks, bancos de dados, interfaces gráficas ou outros detalhes externos. A arquitetura é dividida em camadas principais:
 
@@ -739,9 +707,6 @@ src/
 │   │   │   ├── gateways/   # Interfaces (portas)
 │   │   │   └── presenters/ # Apresentadores
 │   │   └── usecases/       # Casos de uso
-│   ├── customers/          # Módulo de Clientes
-│   ├── orders/             # Módulo de Pedidos
-│   ├── products/           # Módulo de Produtos
 │   └── common/             # Código compartilhado
 ├── external/               # Camada de Infraestrutura e Interface
 │   ├── api/                # Controllers NestJS (Interface)
@@ -755,7 +720,7 @@ src/
 
 ### Estrutura dos Módulos
 
-Cada módulo (categories, customers, orders, products) segue a arquitetura limpa:
+O módulo `categories` segue a arquitetura limpa:
 
 1. **Entities (Domínio)**
    - Contém as entidades e regras de negócio
