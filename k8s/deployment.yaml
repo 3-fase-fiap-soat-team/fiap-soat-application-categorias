@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fiap-soat-application
+  namespace: fiap-soat-app
+  labels:
+    app: fiap-soat-application
+    version: "1.0"
+spec:
+  # Replicas gerenciado pelo HPA (hpa.yaml no repo fiap-soat-k8s-terraform)
+  selector:
+    matchLabels:
+      app: fiap-soat-application
+  template:
+    metadata:
+      labels:
+        app: fiap-soat-application
+        version: "1.0"
+    spec:
+      containers:
+      - name: fiap-soat-application
+        image: 280273007505.dkr.ecr.us-east-1.amazonaws.com/fiap-soat-application:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        
+        # Health Checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        envFrom:
+        - configMapRef:
+            name: fiap-soat-application-config
+        - secretRef:
+            name: fiap-soat-application-secrets
+        
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
