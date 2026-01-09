@@ -524,10 +524,6 @@ O serviço de categorias tem como principais objetivos:
   - Manutenção do catálogo de categorias
   - Ferramentas e scripts para gerência de categorias
 
-## Integrantes
-- Juan Pablo Neres de Lima (RM361411) - Discord: juanjohnny
-- Rafael Petherson Sampaio (RM364885) - Discord: tupanrps7477
-- Gustavo Silva Chaves Do Nascimento (RM361477) - Discord: gustavosilva2673
 
 ## Links Importantes
 - [Repositório GitHub](https://github.com/fiap-group-273/tech-chalenge)
