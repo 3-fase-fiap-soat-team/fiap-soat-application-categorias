@@ -9,7 +9,6 @@ import { ProvidersModule } from '../providers/providers.module';
   controllers: [
     HealthController,
     NestJSCategoriesController,
-    NestJSWebhookController,
   ],
 })
 
