@@ -1,18 +1,19 @@
-# 🚀 SOAT Tech Challenge - Cloud-Native Application
+# 🚀 SOAT Tech Challenge — Serviço de Categorias (Cloud-Native)
 
-Sistema de autoatendimento para lanchonete em expansão, desenvolvido com **Clean Architecture** e deployment **100% cloud-native** (EKS + RDS).
+Repositório do serviço de **Categorias** do SOAT Tech Challenge. Implementa listagem e consulta de categorias usando **Clean Architecture**, **TypeORM** e está preparado para deployment cloud-native (EKS + RDS).
 
 ---
 
 ## 🎯 Sobre o Projeto
 
-Sistema completo de gestão de pedidos com:
-- ✅ **Autoatendimento** via API REST
-- ✅ **Pagamento integrado** (Mercado Pago via QR Code)
-- ✅ **Gestão de pedidos** em tempo real
-- ✅ **Autenticação serverless** (AWS Lambda + Cognito)
-- ✅ **Arquitetura Limpa** (Clean Architecture + CQRS)
-- ✅ **Deploy cloud-native** (Kubernetes EKS + PostgreSQL RDS)
+Serviço responsável por gerenciar as categorias do SOAT. Principais características:
+- ✅ **API REST** para listar e consultar categorias
+- ✅ **Clean Architecture** (domain-first)
+- ✅ **TypeORM** com migrations para persistência em PostgreSQL
+- ✅ **Testes unitários e E2E** (Jest)
+- ✅ **Pronto para deploy cloud-native** (EKS + RDS)
+
+> **Nota**: Este repositório implementa apenas o serviço de categorias — outras responsabilidades do sistema (pagamentos, autenticação, orquestração de pedidos) estão em repositórios separados listados em "Links Úteis".
 
 ---
 
@@ -72,9 +73,9 @@ Sistema completo de gestão de pedidos com:
 
 ## 🚀 Deploy e Execução
 
-### ⚠️ **Importante**: Esta aplicação é **cloud-only**
+### ⚠️ Observação: Deploy cloud-native recomendado
 
-Não há suporte para desenvolvimento local. Todo o ambiente roda em **AWS (EKS + RDS + Lambda)**.
+A aplicação é pensada para deployment em cloud (EKS + RDS), porém é possível rodar em ambiente local para desenvolvimento e testes (usando um arquivo `.env` apropriado, `npm run start:dev` ou `docker-compose up`).
 
 ### Pré-requisitos
 
@@ -84,6 +85,42 @@ Não há suporte para desenvolvimento local. Todo o ambiente roda em **AWS (EKS 
 - ✅ **AWS CLI** configurado
 - ✅ **kubectl** instalado e configurado
 - ✅ **Docker** instalado
+
+### 🔧 Rodando localmente
+
+Opções para desenvolvimento local:
+
+- Usando Node:
+
+```bash
+# instalar dependências
+npm install
+
+# criar um arquivo .env.local (exemplo abaixo) ou exportar variáveis
+# .env.local
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=postgres
+DATABASE_NAME=fiapdb_dev
+NODE_ENV=development
+PORT=3000
+
+# rodar em modo dev
+npm run start:dev
+
+# rodar migrações
+npm run migration:up
+
+# rodar testes
+npm run test
+```
+
+- Usando Docker Compose (requer Postgres acessível ou ajuste do `.env`):
+
+```bash
+docker-compose up --build
+```
 
 ### 1️⃣ Build e Push da Imagem
 
@@ -263,32 +300,12 @@ npm run migration:down
 
 ### Health Checks
 - `GET /health` - Status da aplicação
-- `GET /health/database` - Conectividade RDS
-
-### Documentação
-- `GET /docs` - Swagger UI
 
 ### Categorias
 - `GET /categories` - Listar categorias
-- `POST /categories` - Criar categoria
+- `GET /categories/:id` - Buscar categoria por ID
 
-### Produtos
-- `GET /products` - Listar produtos
-- `GET /products/:id` - Buscar produto
-- `POST /products` - Criar produto
-- `PATCH /products/:id` - Atualizar produto
-- `DELETE /products/:id` - Deletar produto
-
-### Clientes
-- `GET /customers` - Listar clientes
-- `GET /customers/:cpf` - Buscar por CPF
-- `POST /customers` - Criar cliente
-
-### Pedidos
-- `GET /orders` - Listar pedidos
-- `POST /orders` - Criar pedido
-- `PATCH /orders/:id/status` - Atualizar status
-- `POST /orders/:id/payment` - Processar pagamento (Mercado Pago)
+> **Nota**: Outros endpoints mencionados anteriormente (produtos, pedidos, clientes, pagamentos) pertencem a outros serviços do ecossistema SOAT e não estão implementados neste repositório.
 
 ---
 
