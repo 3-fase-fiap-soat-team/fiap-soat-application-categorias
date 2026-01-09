@@ -11,4 +11,16 @@ export class CategoriesController {
     
     return CategoriesPresenter.toDTO(categories);
   }
+
+  static async findById(id: string, dataSource: ICategoryDataSource) {
+    const categoryGateway = new CategoryGateway(dataSource);
+
+    const category = await CategoryUseCase.findById(id, categoryGateway); 
+    
+    if (!category) {
+      return null;
+    }
+    
+    return CategoriesPresenter.toDTOSingle(category);
+  }
 }

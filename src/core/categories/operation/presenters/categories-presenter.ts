@@ -13,4 +13,11 @@ export class CategoriesPresenter {
       return [];
     }
   }
+
+  static toDTOSingle(category: Category): CategoryDTO {
+    return {
+      id: category.id,
+      name: category.name,
+    };
+  }
 }
