@@ -8,13 +8,11 @@ metadata:
 data:
   NODE_ENV: "production"
   PORT: "3000"
+  AWS_REGION: "us-east-1"
   
-  # Database Configuration (será atualizado após RDS estar pronto)
+  # Database Configuration
   DATABASE_HOST: "fiap-soat-db-categorias.cjq57yoxrulq.us-east-1.rds.amazonaws.com"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "fiapdb_categorias"
-  DATABASE_USER: "postgresadmin"
-  DATABASE_TYPE: "postgres"
-  DATABASE_SSL: "false"
-  DATABASE_SYNC: "false"
-  DATABASE_LOGGING: "false"
+  DATABASE_USERNAME: "postgresadmin"
+  DATABASE_SSL: "true"
