@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fiap-soat-categorias-config
+  namespace: fiap-soat-app
+  labels:
+    app: fiap-soat-categorias
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  
+  # Database Configuration (será atualizado após RDS estar pronto)
+  DATABASE_HOST: "fiap-soat-db-categorias.cjq57yoxrulq.us-east-1.rds.amazonaws.com"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "fiapdb_categorias"
+  DATABASE_USER: "postgresadmin"
+  DATABASE_TYPE: "postgres"
+  DATABASE_SSL: "false"
+  DATABASE_SYNC: "false"
+  DATABASE_LOGGING: "false"

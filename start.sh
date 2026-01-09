@@ -1,5 +1,7 @@
 #!/bin/bash
-echo "Running migrations..."
+echo "🚀 Starting Categorias Microservice..."
+echo "📦 Running database migrations..."
 npm run migration:up
-echo "Starting application..."
+echo "✅ Migrations completed!"
+echo "🚀 Starting application..."
 npm run start:prod
