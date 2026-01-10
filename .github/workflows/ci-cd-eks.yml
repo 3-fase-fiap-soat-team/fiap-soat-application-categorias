@@ -43,7 +43,7 @@ jobs:
 
   sonar:
     needs: test
-    if: ${{ secrets.SONAR_TOKEN }} != ''
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
