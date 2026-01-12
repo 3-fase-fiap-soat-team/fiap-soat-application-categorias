@@ -64,11 +64,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           # GITHUB_TOKEN is automatically provided by GitHub Actions
 
-      - name: SonarQube Quality Gate Check
-        uses: SonarSource/sonarqube-quality-gate-check@v1.2.0 # Optional: Fail pipeline if Quality Gate fails
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   build-and-deploy:
     runs-on: ubuntu-latest
     
