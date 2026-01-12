@@ -59,7 +59,7 @@ jobs:
           node-version: '18'
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v4.1.0 # Use the recommended action version
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           # GITHUB_TOKEN is automatically provided by GitHub Actions
