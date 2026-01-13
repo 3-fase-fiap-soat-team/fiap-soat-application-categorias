@@ -1,4 +1,4 @@
-name: CI/CD - Build and Deploy to EKS
+name: CI/CD - Build and Deploy Categorias to EKS
 
 on:
   push:
@@ -14,6 +14,13 @@ on:
     branches:
       - main
   workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: fiap-soat-eks-dev
+  ECR_REPOSITORY: fiap-soat-categorias
+  K8S_NAMESPACE: fiap-soat-app
+  K8S_DEPLOYMENT: fiap-soat-categorias
 
 jobs:
   # ==========================================
@@ -47,13 +54,93 @@ jobs:
 
   #     - name: Build application
   #       run: npm run build
-
-  build-and-deploy:
+          
+  # ==========================================
+  # JOB 2: Build Docker Image e Push para ECR
+  # ==========================================
+  build:
+    name: 🐳 Build & Push Docker Image
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     
-    permissions:
-      contents: read
-      id-token: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Create ECR Repository if not exists
+        run: |
+          aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }} 2>/dev/null || \
+          aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
+          echo "✅ ECR Repository ready: ${{ env.ECR_REPOSITORY }}"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate Docker metadata
+        id: meta
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}"
+          IMAGE_LATEST="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
+          
+          echo "image-tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "image-latest=${IMAGE_LATEST}" >> $GITHUB_OUTPUT
+          echo "short-sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        id: build
+        run: |
+          echo "🐳 Building Docker image for categorias microservice..."
+          docker build \
+            --tag ${{ steps.meta.outputs.image-tag }} \
+            --tag ${{ steps.meta.outputs.image-latest }} \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --build-arg VCS_REF=${{ github.sha }} \
+            --build-arg VERSION=${{ steps.meta.outputs.short-sha }} \
+            .
+          
+          echo "✅ Build completed successfully!"
+
+      - name: Push Docker image to ECR
+        run: |
+          echo "📤 Pushing image to ECR..."
+          docker push ${{ steps.meta.outputs.image-tag }}
+          docker push ${{ steps.meta.outputs.image-latest }}
+          echo "✅ Push completed!"
+
+      - name: Image Summary
+        run: |
+          echo "### 🐳 Docker Image Built - categorias Microservice" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: categorias (CRUD Cliente)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ steps.meta.outputs.image-tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Latest**: \`${{ steps.meta.outputs.image-latest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp**: \`${{ steps.meta.outputs.timestamp }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================
+  # JOB 3: Deploy para EKS
+  # ==========================================
+  deploy:
+    name: 🚀 Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     steps:
       - name: Checkout code
@@ -71,25 +158,112 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: fiap-soat-categorias
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Configure kubectl
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+          kubectl version --client
+          kubectl cluster-info
 
-      - name: Update kubeconfig
+      - name: Apply Kubernetes Manifests
         run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_DEFAULT_REGION }} --name fiap-soat-eks-dev
+          echo "📦 Aplicando manifests do microserviço de categorias..."
+          cd k8s
+          
+          # Aplicar ConfigMap
+          kubectl apply -f configmap.yaml
+          
+          # Aplicar Secret (configurar senha do RDS)
+          echo "🔐 Criando/Atualizando secret..."
+          DB_PASS="${{ secrets.DB_PASSWORD }}"
+          DB_PASS="${DB_PASS:-Admin123}"
+          
+          kubectl create secret generic fiap-soat-categorias-secrets \
+            --namespace=${{ env.K8S_NAMESPACE }} \
+            --from-literal=DATABASE_PASSWORD="$DB_PASS" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Aplicar Service
+          kubectl apply -f service.yaml
+          
+          # Aplicar HPA
+          kubectl apply -f hpa.yaml
+          
+          echo "✅ Manifests de infraestrutura aplicados!"
 
-      - name: Deploy to EKS
+      - name: Deploy or Update Deployment
         run: |
-          kubectl apply -f k8s/configmap.yaml
-          kubectl apply -f k8s/service.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/hpa.yaml
-          kubectl rollout status deployment/fiap-soat-categorias -n fiap-soat-app --timeout=5m
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_TAG="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}"
+          
+          if ! kubectl get deployment ${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }} &> /dev/null; then
+            echo "📦 Deployment não existe, criando pela primeira vez..."
+            kubectl apply -f k8s/deployment.yaml
+            
+            # Atualizar com a imagem correta
+            kubectl set image deployment/${{ env.K8S_DEPLOYMENT }} \
+              fiap-soat-categorias=${IMAGE_TAG} \
+              -n ${{ env.K8S_NAMESPACE }}
+          else
+            echo "🔄 Deployment existe, atualizando imagem..."
+            kubectl set image deployment/${{ env.K8S_DEPLOYMENT }} \
+              fiap-soat-categorias=${IMAGE_TAG} \
+              -n ${{ env.K8S_NAMESPACE }}
+          fi
+          
+          # Adicionar anotações
+          kubectl annotate deployment/${{ env.K8S_DEPLOYMENT }} \
+            kubernetes.io/change-cause="Deploy commit ${SHORT_SHA} by ${{ github.actor }}" \
+            -n ${{ env.K8S_NAMESPACE }} --overwrite
+
+      - name: Wait for Rollout
+        run: |
+          echo "⏳ Aguardando deployment rollout..."
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }} \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=5m
+
+      - name: Verify Deployment
+        run: |
+          echo ""
+          echo "=== 📊 Deployment Status ==="
+          kubectl get deployment ${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
+          
+          echo ""
+          echo "=== 🔍 Pods Status ==="
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=${{ env.K8S_DEPLOYMENT }} -o wide
+          
+          echo ""
+          echo "=== 🌐 Service Status ==="
+          kubectl get svc -n ${{ env.K8S_NAMESPACE }} fiap-soat-categorias-service
+          
+          echo ""
+          echo "=== 📈 HPA Status ==="
+          kubectl get hpa -n ${{ env.K8S_NAMESPACE }} fiap-soat-categorias-hpa
+
+      - name: Get Service Endpoint
+        run: |
+          echo ""
+          echo "=== 🔗 Service Endpoint ==="
+          LB_HOSTNAME=$(kubectl get svc fiap-soat-categorias-service -n ${{ env.K8S_NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+          
+          if [ "$LB_HOSTNAME" != "pending" ] && [ ! -z "$LB_HOSTNAME" ]; then
+            echo "✅ Load Balancer URL: http://$LB_HOSTNAME"
+            echo "🏥 Health Check: http://$LB_HOSTNAME/health"
+            echo "📋 API Docs: http://$LB_HOSTNAME/api"
+            echo ""
+            echo "### 🚀 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Service**: categorias Microservice" >> $GITHUB_STEP_SUMMARY
+            echo "- **Endpoint**: http://$LB_HOSTNAME" >> $GITHUB_STEP_SUMMARY
+            echo "- **Health**: http://$LB_HOSTNAME/health" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏳ Load Balancer ainda sendo provisionado..."
+            echo "⚠️  Aguarde ~3 minutos e execute: kubectl get svc -n ${{ env.K8S_NAMESPACE }} fiap-soat-categorias-service"
+          fi
+
+      - name: Show Recent Logs
+        if: always()
+        run: |
+          echo ""
+          echo "=== 📝 Recent Logs (last 50 lines) ==="
+          kubectl logs -n ${{ env.K8S_NAMESPACE }} -l app=${{ env.K8S_DEPLOYMENT }} --tail=50 || echo "⚠️  Pods ainda não estão prontos"
