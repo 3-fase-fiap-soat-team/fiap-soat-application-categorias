@@ -4,11 +4,22 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'k8s/**'
+      - '.github/workflows/ci-cd-eks.yml'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   test:
+    name: 🧪 Run Tests
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -42,8 +53,10 @@ jobs:
           path: coverage/lcov.info
 
   sonar:
+    name: 🔍 SonarQube Scan
     needs: test
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
