@@ -15,6 +15,7 @@ for (let i = 0; i < argv.length; i++) {
 }
 
 const summaryPath = path.resolve(process.cwd(), 'coverage', 'coverage-summary.json');
+console.log(`Coverage summary at ${summaryPath}`);
 if (!fs.existsSync(summaryPath)) {
   console.error(`Coverage summary not found at ${summaryPath}`);
   process.exit(1);
